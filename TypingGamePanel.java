@@ -11,9 +11,12 @@ public class TypingGamePanel extends JPanel{
 	//private String newWord;
 	//private Words words = new Words("words.txt");
 	
+	//static public String playStatus = "NotPlaying"; //Playing 
+	protected static String playStatus= "NotPlaying";
+	
 	private String fallingWord = null;
 	private ArrayList<String> answerVector = new ArrayList<String>();
-	
+	private JLabel newLabel;
 	public TypingGamePanel() { //setLayout
 		setLayout(new BorderLayout());
 		add(groundPanel, BorderLayout.CENTER);
@@ -62,10 +65,24 @@ public class TypingGamePanel extends JPanel{
 			resLabel.setText(text);
 		}
 		public void startGame() {
-			randomThread = new RandomThread();
-			randomThread.start();
 			
-			gameOn = true;
+			while(true) {
+				if(TypingGamePanel.playStatus.equals("NotPlaying")) {
+					//리스너 안불리면 시작안하고 계속 상태체크
+					System.out.println("클릭 안햇음");
+					continue;
+				}
+					
+					
+				if(TypingGamePanel.playStatus.equals("Playing")) { //리스너 불리면 스레드 시작하고 break;
+					System.out.println("리스너 작동");
+					randomThread = new RandomThread();
+					randomThread.start();
+				
+					gameOn = true;
+					break;
+				}	
+			}
 		}
 		
 		public boolean matchWord(String text) {
@@ -84,7 +101,7 @@ public class TypingGamePanel extends JPanel{
 		}
 		class RandomThread extends Thread{
 
-			private JLabel newLabel; //게임 숫자를 출력하는 레이블
+			//private JLabel newLabel; //게임 숫자를 출력하는 레이블
 
 			public void run() {
 				while(true) {
@@ -106,7 +123,7 @@ public class TypingGamePanel extends JPanel{
 						thread = new FallingThread(groundPanel, newLabel);
 						thread.start();
 						
-						Thread.sleep(15000);
+						Thread.sleep(5000);
 						
 						
 					}catch(InterruptedException e){
@@ -135,7 +152,6 @@ public class TypingGamePanel extends JPanel{
 				falling = true;
 				while(true) {
 					try {
-						
 						sleep(delay);
 						int y = label.getY() + 5; //5픽셀 씩 아래로 이동
 						if(y >= panel.getHeight()-label.getHeight()) {//바닥에 닿음
@@ -187,8 +203,15 @@ public class TypingGamePanel extends JPanel{
 						ScorePanel.correct=1;
 						ScorePanel.checkSuccess();
 						groundPanel.printResult("성공");
-						groundPanel.stopGame();
-						groundPanel.startGame();
+						Component[] children = groundPanel.getComponents();
+						for(int i=0; i<children.length; i++) {
+							if(((JLabel)children[i]).getText().equals(answer)) {
+								groundPanel.remove(children[i]);
+								groundPanel.revalidate();
+							}
+						}
+						//groundPanel.stopGame();
+						//groundPanel.startGame();
 						tf.setText("");
 					}
 					else {
