@@ -1,22 +1,24 @@
 import java.awt.*;
 import javax.swing.*;
 import java.awt.event.*;
+import java.text.SimpleDateFormat;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Vector;
 
-public class TypingGamePanel extends JPanel{
-	private JGameGroundPanel groundPanel = new JGameGroundPanel(); //단어 떨어지는 스크린
+
+class TypingGamePanel extends JPanel{
+	JGameGroundPanel groundPanel = new JGameGroundPanel(); //단어 떨어지는 스크린
 	private JInputPanel inputPanel = new JInputPanel(); //입력창에 입력하는 스크린
-	//private String newWord;
-	//private Words words = new Words("words.txt");
-	
-	//static public String playStatus = "NotPlaying"; //Playing 
-	protected static String playStatus= "NotPlaying";
+
+	public static String playStatus= "NotPlaying";
 	
 	private String fallingWord = null;
 	private ArrayList<String> answerVector = new ArrayList<String>();
-	private JLabel newLabel;
+
+	private JLabel newLabel; //새로 생기는 레이블
+	
+	
 	public TypingGamePanel() { //setLayout
 		setLayout(new BorderLayout());
 		add(groundPanel, BorderLayout.CENTER);
@@ -76,6 +78,7 @@ public class TypingGamePanel extends JPanel{
 					
 				if(TypingGamePanel.playStatus.equals("Playing")) { //리스너 불리면 스레드 시작하고 break;
 					System.out.println("리스너 작동");
+					
 					randomThread = new RandomThread();
 					randomThread.start();
 				
@@ -114,20 +117,25 @@ public class TypingGamePanel extends JPanel{
 						newLabel = new JLabel(fallingWord);
 						newLabel.setSize(200, 30);
 						newLabel.setLocation(x, y);
-						newLabel.setForeground(Color.MAGENTA);
+						newLabel.setForeground(TypingGameFrame.selectedColor);
 						newLabel.setFont(new Font("Tahoma", Font.ITALIC, 20));
 						groundPanel.add(newLabel);
 						//groundPanel.repaint();
 						
 						
+						
 						thread = new FallingThread(groundPanel, newLabel);
 						thread.start();
+						//fallings.add(thread); //떨어지는 중인 쓰레드들을 벡터에 저장
 						
 						Thread.sleep(5000);
 						
 						
 					}catch(InterruptedException e){
-						
+						/*
+						 * while(true) { if(TypingGamePanel.pauseOrResume=="Resume")break; }
+						 */
+						return;
 					}
 				}
 			}
@@ -153,6 +161,7 @@ public class TypingGamePanel extends JPanel{
 				while(true) {
 					try {
 						sleep(delay);
+						
 						int y = label.getY() + 5; //5픽셀 씩 아래로 이동
 						if(y >= panel.getHeight()-label.getHeight()) {//바닥에 닿음
 							ScorePanel.correct=-1; //점수 감점
@@ -162,13 +171,16 @@ public class TypingGamePanel extends JPanel{
 							groundPanel.printResult("시간초과실패");
 							//groundPanel.stopSelfAndNewGame();
 							this.interrupt();//return;//break; // 스레드 종료
+							break;
 						}
 						else {
 							label.setLocation(label.getX(), y);
 							TypingGamePanel.this.repaint();
 						}
-					
+
 					} catch (InterruptedException e) {
+						
+						//이동안함
 						falling = false;
 						return; // 스레드 종료
 					}

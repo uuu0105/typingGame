@@ -30,7 +30,8 @@ class EditPanel extends JPanel {
 	        File file = new File(path);
 	        FileWriter fileWriter = new FileWriter(file,true);
 	        BufferedWriter bufferFileWriter  = new BufferedWriter(fileWriter);
-	        fileWriter.append(newWord);
+	        
+	        fileWriter.append("\n"+newWord);
 	        bufferFileWriter.close();
 	        System.out.println("User Registration Completed");
 	    }catch(Exception ex)
