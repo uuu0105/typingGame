@@ -4,6 +4,7 @@ import java.awt.event.*;
 import java.text.SimpleDateFormat;
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.Vector;
 
 
@@ -37,7 +38,7 @@ class TypingGamePanel extends JPanel{
 		
 		
 		public JGameGroundPanel() {
-			setBackground(Color.PINK);
+			
 			setLayout(null);
 			add(label);
 			
@@ -59,10 +60,48 @@ class TypingGamePanel extends JPanel{
 			gameOn = false;
 		}
 		
-		public void stopSelfAndNewGame() { // 스레드가 바닥에 닿아서 실패할 때 호출
-			startGame();			
+		public void writeRecords(String name, int score) {
+			try {
+				String recordPath = "records.txt";
+				File recordFile = new File(recordPath);
+				FileWriter fileWriter = new FileWriter(recordFile, true);
+				BufferedWriter bufferFileWriter = new BufferedWriter(fileWriter);
+				Date currentTime = new Date();
+				SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+				fileWriter.append("Player : " + name + "\n");
+				fileWriter.append("Score : " + Integer.toString(score) + "\n");
+				fileWriter.append("Date : " + formatter.format(currentTime) + "\n");
+				fileWriter.append("---------------------------------------\n");
+				bufferFileWriter.close();
+				System.out.println("records Completed");
+			} catch(Exception e) { System.out.println("record error"); }
 		}
-		
+		public void gameOver() {
+			inputPanel.tf.setEditable(false);
+			Component[] children = groundPanel.getComponents();
+			for (int i = 0; i < children.length; i++) {
+				groundPanel.remove(children[i]);
+				groundPanel.revalidate();
+				groundPanel.repaint();
+			}
+			thread= null;
+			//thread.interrupt();
+			randomThread = null;
+			//randomThread.interrupt();
+			// 다이얼로그 창에서 이름 입력 받아 파일에 이름과 점수 기록
+			String name = (String) JOptionPane.showInputDialog(this, "Write your name", "Save your record", JOptionPane.PLAIN_MESSAGE);
+			//String name = (String) JOptionPane.showInputDialog(null, "input your name");
+			System.out.println("user name : " + name);
+			if(name != null) {
+				JOptionPane.showMessageDialog(null, "Successfully saved your record, " + name);
+				writeRecords(name, ScorePanel.score);
+				return;
+			}
+			else {
+				// 다이얼로그 창 닫기
+				System.exit(0);
+			}
+		}
 		public void printResult(String text) {
 			resLabel.setText(text);
 		}
@@ -91,11 +130,15 @@ class TypingGamePanel extends JPanel{
 		public boolean matchWord(String text) {
 			
 			System.out.println(answerVector);
-			for(int i=0; i<answerVector.size(); i++) {
-				if(answerVector.get(i).equals(text)) { 
+			for (int i = 0; i < answerVector.size(); i++) {
+				System.out.println("vector size : " + answerVector.size());
+				if (answerVector.get(i).equals(text)) {
+					answerVector.remove(text);
+					System.out.println("vector size : " + answerVector.size());
 					System.out.println("text is answer");
-					return true; 
-				} 
+					return true;
+				}
+				
 			}
 	
 			return false;
@@ -105,37 +148,41 @@ class TypingGamePanel extends JPanel{
 		class RandomThread extends Thread{
 
 			//private JLabel newLabel; //게임 숫자를 출력하는 레이블
-
+			private int generateCycle = 3000;
 			public void run() {
-				while(true) {
+				while (!Thread.interrupted()) {
 					try {
+						if (TimerRunnable.isFinished == true) {
+							gameOver();
+							this.interrupt();
+						}
+						if(TimerRunnable.remainedTime > 50 && TimerRunnable.remainedTime <= 100) {
+							generateCycle = 2000;
+							TimerRunnable.level=2;
+						}
+						else if(TimerRunnable.remainedTime <= 50) {
+							generateCycle = 1500;
+							TimerRunnable.level=3;
+						}
 						fallingWord = words.getRandomWord();
 						answerVector.add(fallingWord);
-						
-						int x = ((int)(Math.random() * groundPanel.getWidth()));
-						int y = 5;
 						newLabel = new JLabel(fallingWord);
-						newLabel.setSize(200, 30);
+						newLabel.setSize(180, 30);
+						int x = ((int) (Math.random() * (groundPanel.getWidth() - newLabel.getWidth())));
+						int y = 5;
 						newLabel.setLocation(x, y);
 						newLabel.setForeground(TypingGameFrame.selectedColor);
 						newLabel.setFont(new Font("Tahoma", Font.ITALIC, 20));
 						groundPanel.add(newLabel);
-						//groundPanel.repaint();
-						
-						
-						
+
 						thread = new FallingThread(groundPanel, newLabel);
 						thread.start();
-						//fallings.add(thread); //떨어지는 중인 쓰레드들을 벡터에 저장
-						
-						Thread.sleep(5000);
-						
-						
-					}catch(InterruptedException e){
-						/*
-						 * while(true) { if(TypingGamePanel.pauseOrResume=="Resume")break; }
-						 */
-						return;
+
+						Thread.sleep(generateCycle);
+
+					} catch (InterruptedException e) {
+						System.out.println("random Exception");
+						return; // 스레드 종료
 					}
 				}
 			}
@@ -143,8 +190,9 @@ class TypingGamePanel extends JPanel{
 		class FallingThread extends Thread {
 			private JGameGroundPanel panel;
 			private JLabel label; //게임 숫자를 출력하는 레이블
-			private long delay = 1000; // 지연 시간의 초깃값 = 200
+			private long fallingDelay = 300; // 지연 시간의 초깃값 = 200
 			private boolean falling = false; // 떨이지고 있는지. 초깃값 = false
+			private int fallingCount =0; //떨어진 횟수
 			
 			public FallingThread(JGameGroundPanel panel, JLabel label) {
 				this.panel = panel;
@@ -158,29 +206,33 @@ class TypingGamePanel extends JPanel{
 			@Override
 			public void run() {
 				falling = true;
-				while(true) {
+				while (!Thread.interrupted()) {
 					try {
-						sleep(delay);
-						
-						int y = label.getY() + 5; //5픽셀 씩 아래로 이동
-						if(y >= panel.getHeight()-label.getHeight()) {//바닥에 닿음
-							ScorePanel.correct=-1; //점수 감점
-							ScorePanel.checkSuccess();
+						sleep(fallingDelay);
+						if (TimerRunnable.isFinished == true)
+							gameOver();
+						if(TimerRunnable.remainedTime<=100)
+							fallingDelay = 150;
+						int y = label.getY() + 5; // 5픽셀 씩 아래로 이동
+						if (y >= panel.getHeight()) { //- label.getHeight()) {// 바닥에 닿음
+							fallingCount++;
+							TimerRunnable.life--;
+							//ScorePanel.correct = -1; // 점수 감점
+							//ScorePanel.checkSuccess();
 							falling = false;
 							label.setText("");
 							groundPanel.printResult("시간초과실패");
-							//groundPanel.stopSelfAndNewGame();
-							this.interrupt();//return;//break; // 스레드 종료
-							break;
-						}
-						else {
+							if (TimerRunnable.life < 0)
+								gameOver();
+							this.interrupt(); // 스레드 종료
+						} else {
 							label.setLocation(label.getX(), y);
 							TypingGamePanel.this.repaint();
 						}
-
 					} catch (InterruptedException e) {
-						
-						//이동안함
+						System.out.println("Exception working");
+						ScorePanel.correct = -1; // 점수 감점
+						ScorePanel.checkSuccess();
 						falling = false;
 						return; // 스레드 종료
 					}
@@ -190,7 +242,7 @@ class TypingGamePanel extends JPanel{
 	}
 
 	class JInputPanel extends JPanel {
-		
+		private JTextField tf;
 		public JInputPanel() {
 			
 			setLayout(new FlowLayout());
@@ -204,8 +256,6 @@ class TypingGamePanel extends JPanel{
 
 					if(answer.equals("그만"))
 						System.exit(0);
-					//if(!groundPanel.isGameOn())
-					//	return;
 					
 					boolean match = groundPanel.matchWord(answer);
 					
@@ -222,8 +272,7 @@ class TypingGamePanel extends JPanel{
 								groundPanel.revalidate();
 							}
 						}
-						//groundPanel.stopGame();
-						//groundPanel.startGame();
+					
 						tf.setText("");
 					}
 					else {

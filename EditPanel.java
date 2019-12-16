@@ -21,7 +21,7 @@ class EditPanel extends JPanel {
 		JButton btn=new JButton("add");
 		btn.addActionListener(new MyActionListener());
 		add(btn);
-		add(new JButton("save"));
+		
 	}
 	public void append(String newWord){
 	    try
